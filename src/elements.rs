@@ -4,6 +4,7 @@ pub enum PathElementLabel {
     Line,
     Horizontal,
     Vertical,
+    CubicBezier,
     End,
 }
 
@@ -26,6 +27,7 @@ impl PathElementCommand {
             'l' | 'L' => Self::new(ch.is_lowercase(), PathElementLabel::Line),
             'h' | 'H' => Self::new(ch.is_lowercase(), PathElementLabel::Horizontal),
             'v' | 'V' => Self::new(ch.is_lowercase(), PathElementLabel::Vertical),
+            'c' | 'C' => Self::new(ch.is_lowercase(), PathElementLabel::CubicBezier),
             'z' | 'Z' => Self::new(false, PathElementLabel::End),
             _ => return None,
         })

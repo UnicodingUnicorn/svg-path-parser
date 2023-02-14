@@ -1,13 +1,18 @@
 use std::iter::Peekable;
 use std::str::Chars;
 
+mod curves;
 mod elements;
 mod utils;
 
 use elements::{ PathElementCommand, PathElementLabel };
 
 pub fn parse<'a>(path:&'a str) -> PathParser<'a> {
-    PathParser::new(path)
+    PathParser::new(path, 64)
+}
+
+pub fn parse_with_resolution<'a>(path:&'a str, resolution:u64) -> PathParser<'a> {
+    PathParser::new(path, resolution)
 }
 
 pub struct PathParser<'a> {
@@ -16,15 +21,17 @@ pub struct PathParser<'a> {
     cursor: (f64, f64),
     paths: Vec<Vec<(f64, f64)>>,
     hard_ended: bool,
+    resolution: u64,
 }
 impl<'a> PathParser<'a> {
-    fn new(data:&'a str) -> Self {
+    fn new(data:&'a str, resolution:u64) -> Self {
         Self {
             data: data.chars().peekable(),
             current_command: None,
             cursor: (0.0, 0.0),
             paths: Vec::new(),
             hard_ended: false,
+            resolution,
         }
     }
 
@@ -96,6 +103,7 @@ impl<'a> PathParser<'a> {
             PathElementLabel::Line => self.handle_line(elem.relative()),
             PathElementLabel::Horizontal => self.handle_horizontal(elem.relative()),
             PathElementLabel::Vertical => self.handle_vertical(elem.relative()),
+            PathElementLabel::CubicBezier => self.handle_cubic_bezier(elem.relative()),
             PathElementLabel::End => self.handle_end(),
         }
     }
@@ -107,19 +115,40 @@ impl<'a> PathParser<'a> {
         Some(false)
     }
 
-    fn insert_line(&mut self, end:(f64, f64)) -> Option<bool> {
+    fn update_paths(&mut self, end:(f64, f64)) {
+        // Make sure there's an active path
         if self.paths.len() == 0 {
             self.paths.push(vec![self.cursor]);
         }
 
+        // Make sure that the last point is pointing to the cursor
         let n = self.paths.len() - 1;
         let n2 = self.paths[n].len();
         if n2 > 0 && self.paths[n][n2 - 1] != self.cursor {
             self.paths[n].push(self.cursor);
         }
 
-        self.paths[n].push(end);
+        // Update cursor
         self.cursor = end;
+    }
+
+    fn insert_points(&mut self, mut points:Vec<(f64, f64)>) -> Option<bool> {
+        let end = match points.len() {
+            0 => self.cursor,
+            _ => points[points.len() - 1],
+        };
+
+        self.update_paths(end);
+        let n = self.paths.len() - 1;
+        self.paths[n].append(&mut points);
+        Some(false)
+    }
+
+    fn insert_line(&mut self, end:(f64, f64)) -> Option<bool> {
+        self.update_paths(end);
+
+        let n = self.paths.len() - 1;
+        self.paths[n].push(end);
 
         Some(false)
     }
@@ -155,6 +184,15 @@ impl<'a> PathParser<'a> {
         }
 
         Some(true)
+    }
+
+    fn handle_cubic_bezier(&mut self, relative:bool) -> Option<bool> {
+        let p1 = self.get_point(relative)?;
+        let p2 = self.get_point(relative)?;
+        let end = self.get_point(relative)?;
+
+        let points = curves::compute_cubic_bezier(self.cursor, p1, p2, end, self.resolution);
+        self.insert_points(points)
     }
 }
 
