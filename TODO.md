@@ -1,2 +1,3 @@
-[] Unit tests
-[] Bezier curves
+- Unit tests
+- Bezier curves
+- Arcs
