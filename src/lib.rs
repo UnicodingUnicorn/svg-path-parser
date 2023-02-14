@@ -52,13 +52,18 @@ impl<'a> PathParser<'a> {
         self.discard_separators();
 
         let mut s = String::new();
+        let mut decimal_count = 0;
         while let Some(&ch) = self.data.peek() {
-            if !utils::is_number_part(ch) {
+            if ch == '+' || ch == '-' && s.is_empty() {
+                s.push(self.data.next()?);
+            } else if ch == '.' && decimal_count == 0 {
+                s.push(self.data.next()?);
+                decimal_count = 1;  
+            } else if ch.is_digit(10) {
+                s.push(self.data.next()?);
+            } else {
                 break;
             }
-
-            // Should technically never be None, but best to be safe
-            s.push(self.data.next()?);            
         }
         
         s.parse::<f64>().ok()
