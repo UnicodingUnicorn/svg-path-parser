@@ -1,3 +1,10 @@
+#[derive(PartialEq)]
+pub enum PreviousElementCommand {
+    NotCurve,
+    CubicBezier((f64, f64)),
+    End,
+}
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum PathElementLabel {
     Move,
@@ -5,6 +12,7 @@ pub enum PathElementLabel {
     Horizontal,
     Vertical,
     CubicBezier,
+    SmoothCubicBezier,
     End,
 }
 
@@ -28,6 +36,7 @@ impl PathElementCommand {
             'h' | 'H' => Self::new(ch.is_lowercase(), PathElementLabel::Horizontal),
             'v' | 'V' => Self::new(ch.is_lowercase(), PathElementLabel::Vertical),
             'c' | 'C' => Self::new(ch.is_lowercase(), PathElementLabel::CubicBezier),
+            's' | 'S' => Self::new(ch.is_lowercase(), PathElementLabel::SmoothCubicBezier),
             'z' | 'Z' => Self::new(false, PathElementLabel::End),
             _ => return None,
         })

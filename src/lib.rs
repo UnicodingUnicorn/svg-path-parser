@@ -5,7 +5,7 @@ mod curves;
 mod elements;
 mod utils;
 
-use elements::{ PathElementCommand, PathElementLabel };
+use elements::{ PathElementCommand, PathElementLabel, PreviousElementCommand };
 
 pub fn parse<'a>(path:&'a str) -> PathParser<'a> {
     PathParser::new(path, 64)
@@ -18,6 +18,7 @@ pub fn parse_with_resolution<'a>(path:&'a str, resolution:u64) -> PathParser<'a>
 pub struct PathParser<'a> {
     data: Peekable<Chars<'a>>,
     current_command: Option<PathElementCommand>,
+    previous_command: Option<PreviousElementCommand>,
     cursor: (f64, f64),
     paths: Vec<Vec<(f64, f64)>>,
     hard_ended: bool,
@@ -28,6 +29,7 @@ impl<'a> PathParser<'a> {
         Self {
             data: data.chars().peekable(),
             current_command: None,
+            previous_command: None,
             cursor: (0.0, 0.0),
             paths: Vec::new(),
             hard_ended: false,
@@ -98,21 +100,25 @@ impl<'a> PathParser<'a> {
         self.current_command = Some(elem);
 
         // Parse command
-        match elem.label() {
+        let command = match elem.label() {
             PathElementLabel::Move => self.handle_move(elem.relative()),
             PathElementLabel::Line => self.handle_line(elem.relative()),
             PathElementLabel::Horizontal => self.handle_horizontal(elem.relative()),
             PathElementLabel::Vertical => self.handle_vertical(elem.relative()),
             PathElementLabel::CubicBezier => self.handle_cubic_bezier(elem.relative()),
+            PathElementLabel::SmoothCubicBezier => self.handle_smooth_cubic_bezier(elem.relative()),
             PathElementLabel::End => self.handle_end(),
-        }
+        }?;
+
+        self.previous_command = Some(command);
+        Some(self.previous_command == Some(PreviousElementCommand::End)) // Avoid more allocations
     }
 
-    fn handle_move(&mut self, relative:bool) -> Option<bool> {
+    fn handle_move(&mut self, relative:bool) -> Option<PreviousElementCommand> {
         self.cursor = self.get_point(relative)?;
         self.paths.push(vec![self.cursor]);
 
-        Some(false)
+        Some(PreviousElementCommand::NotCurve)
     }
 
     fn update_paths(&mut self, end:(f64, f64)) {
@@ -132,7 +138,7 @@ impl<'a> PathParser<'a> {
         self.cursor = end;
     }
 
-    fn insert_points(&mut self, mut points:Vec<(f64, f64)>) -> Option<bool> {
+    fn insert_points(&mut self, mut points:Vec<(f64, f64)>) {
         let end = match points.len() {
             0 => self.cursor,
             _ => points[points.len() - 1],
@@ -140,25 +146,26 @@ impl<'a> PathParser<'a> {
 
         self.update_paths(end);
         let n = self.paths.len() - 1;
-        self.paths[n].append(&mut points);
-        Some(false)
+
+        self.paths[n].append(&mut points);        
+        // Don't return anything as these are used with curves
     }
 
-    fn insert_line(&mut self, end:(f64, f64)) -> Option<bool> {
+    fn insert_line(&mut self, end:(f64, f64)) -> Option<PreviousElementCommand> {
         self.update_paths(end);
 
         let n = self.paths.len() - 1;
         self.paths[n].push(end);
 
-        Some(false)
+        Some(PreviousElementCommand::NotCurve)
     }
 
-    fn handle_line(&mut self, relative:bool) -> Option<bool> {
+    fn handle_line(&mut self, relative:bool) -> Option<PreviousElementCommand> {
         let end = self.get_point(relative)?;
         self.insert_line(end)
     }
 
-    fn handle_horizontal(&mut self, relative:bool) -> Option<bool> {
+    fn handle_horizontal(&mut self, relative:bool) -> Option<PreviousElementCommand> {
         let y = self.get_float()?;
         let x = match relative {
             true => self.cursor.0 + self.get_float()?,
@@ -168,7 +175,7 @@ impl<'a> PathParser<'a> {
         self.insert_line((x, y))
     }
 
-    fn handle_vertical(&mut self, relative:bool) -> Option<bool> {
+    fn handle_vertical(&mut self, relative:bool) -> Option<PreviousElementCommand> {
         let x = self.get_float()?;
         let y = match relative {
             true => self.cursor.1 + self.get_float()?,
@@ -178,21 +185,38 @@ impl<'a> PathParser<'a> {
         self.insert_line((x, y))
     }
 
-    fn handle_end(&mut self) -> Option<bool> {
+    fn handle_end(&mut self) -> Option<PreviousElementCommand> {
         if self.paths.len() > 0 && self.paths[0].len() > 0 {
             self.cursor = self.paths[0][0];
         }
 
-        Some(true)
+        Some(PreviousElementCommand::End)
     }
 
-    fn handle_cubic_bezier(&mut self, relative:bool) -> Option<bool> {
+    fn handle_cubic_bezier(&mut self, relative:bool) -> Option<PreviousElementCommand> {
         let p1 = self.get_point(relative)?;
         let p2 = self.get_point(relative)?;
         let end = self.get_point(relative)?;
 
         let points = curves::compute_cubic_bezier(self.cursor, p1, p2, end, self.resolution);
-        self.insert_points(points)
+        self.insert_points(points);
+
+        Some(PreviousElementCommand::CubicBezier(p2))
+    }
+
+    fn handle_smooth_cubic_bezier(&mut self, relative:bool) -> Option<PreviousElementCommand> {
+        let p2 = self.get_point(relative)?;
+        let end = self.get_point(relative)?;
+
+        let p1 = match self.previous_command {
+            Some(PreviousElementCommand::CubicBezier(p1)) => utils::reflect_point(p1, self.cursor),
+            _ => self.cursor,
+        };
+
+        let points = curves::compute_cubic_bezier(self.cursor, p1, p2, end, self.resolution);
+        self.insert_points(points);
+
+        Some(PreviousElementCommand::CubicBezier(p2))
     }
 }
 
