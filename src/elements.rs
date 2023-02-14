@@ -2,6 +2,7 @@
 pub enum PreviousElementCommand {
     NotCurve,
     CubicBezier((f64, f64)),
+    QuadraticBezier((f64, f64)),
     End,
 }
 
@@ -13,6 +14,8 @@ pub enum PathElementLabel {
     Vertical,
     CubicBezier,
     SmoothCubicBezier,
+    QuadraticBezier,
+    SmoothQuadraticBezier,
     End,
 }
 
@@ -37,6 +40,8 @@ impl PathElementCommand {
             'v' | 'V' => Self::new(ch.is_lowercase(), PathElementLabel::Vertical),
             'c' | 'C' => Self::new(ch.is_lowercase(), PathElementLabel::CubicBezier),
             's' | 'S' => Self::new(ch.is_lowercase(), PathElementLabel::SmoothCubicBezier),
+            'q' | 'Q' => Self::new(ch.is_lowercase(), PathElementLabel::QuadraticBezier),
+            't' | 'T' => Self::new(ch.is_lowercase(), PathElementLabel::SmoothQuadraticBezier),
             'z' | 'Z' => Self::new(false, PathElementLabel::End),
             _ => return None,
         })

@@ -15,3 +15,16 @@ pub fn compute_cubic_bezier(start:(f64, f64), p1:(f64, f64), p2:(f64, f64), end:
 
     res
 }
+
+pub fn compute_quadratic_bezier(start:(f64, f64), p1:(f64, f64), end:(f64, f64), n:u64) -> Vec<(f64, f64)> {
+    let mut res = Vec::new();
+    for i in 0..(n + 1) {
+        let t = (i as f64) / (n as f64);
+        let x = scale(t, 0, 2) * start.0 + 2.0 * scale(t, 1, 2) * p1.0 + scale(t, 2, 2) * end.0;
+        let y = scale(t, 0, 2) * start.1 + 2.0 * scale(t, 1, 2) * p1.1 + scale(t, 2, 2) * end.1;
+
+        res.push((x, y))
+    }
+
+    res
+}

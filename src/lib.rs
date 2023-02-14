@@ -112,6 +112,8 @@ impl<'a> PathParser<'a> {
             PathElementLabel::Vertical => self.handle_vertical(elem.relative()),
             PathElementLabel::CubicBezier => self.handle_cubic_bezier(elem.relative()),
             PathElementLabel::SmoothCubicBezier => self.handle_smooth_cubic_bezier(elem.relative()),
+            PathElementLabel::QuadraticBezier => self.handle_quadratic_bezier(elem.relative()),
+            PathElementLabel::SmoothQuadraticBezier => self.handle_smooth_quadratic_bezier(elem.relative()),
             PathElementLabel::End => self.handle_end(),
         }?;
 
@@ -222,6 +224,29 @@ impl<'a> PathParser<'a> {
         self.insert_points(points);
 
         Some(PreviousElementCommand::CubicBezier(p2))
+    }
+
+    fn handle_quadratic_bezier(&mut self, relative:bool) -> Option<PreviousElementCommand> {
+        let p1 = self.get_point(relative)?;
+        let end = self.get_point(relative)?;
+
+        let points = curves::compute_quadratic_bezier(self.cursor, p1, end, self.resolution);
+        self.insert_points(points);
+
+        Some(PreviousElementCommand::QuadraticBezier(p1))
+    }
+
+    fn handle_smooth_quadratic_bezier(&mut self, relative:bool) -> Option<PreviousElementCommand> {
+        let end = self.get_point(relative)?;
+        let p1 = match self.previous_command {
+            Some(PreviousElementCommand::QuadraticBezier(p1)) => utils::reflect_point(p1, self.cursor),
+            _ => self.cursor,
+        };
+
+        let points = curves::compute_quadratic_bezier(self.cursor, p1, end, self.resolution);
+        self.insert_points(points);
+
+        Some(PreviousElementCommand::QuadraticBezier(p1))
     }
 }
 
