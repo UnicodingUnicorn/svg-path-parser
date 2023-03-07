@@ -1,3 +1,17 @@
+//! Simple SVG path parsing.
+//! Parses a SVG path string (the thing that goes in 'd') into sets of points representing continuous lines.
+//! 
+//! ## Usage
+//! ```rust
+//! let paths = svg_path_parser::parse(&path).collect::<Vec<(bool, Vec<(f64, f64)>)>>();
+//! ```
+//! 
+//! Each `(bool, Vec<(f64, f64)>)` represents a continuous line, 
+//! with the `bool` indicating if the line is closed.
+//! A closed line has the ending point connect to the starting point.
+
+#![warn(missing_docs)]
+
 use std::iter::Peekable;
 use std::str::Chars;
 
@@ -7,14 +21,29 @@ mod utils;
 
 use elements::{ PathElementCommand, PathElementLabel, PreviousElementCommand };
 
+/// Parse a SVG path string.
+/// 
+/// Returns an iterator over 
 pub fn parse<'a>(path:&'a str) -> PathParser<'a> {
     PathParser::new(path, 64)
 }
 
+/// Parse a SVG path string with custom resolution.
+/// 
+/// Refer to 
+/// Resolution refers to how many line segments a curve is broken down into.
+/// Higher numbers give smoother curves, but also more points to work with, which depending on what you're planning further down may not be worth it.
+/// The default resolution is 64.
+/// 
+/// # Usage
+/// ```rust
+///     let paths = svg_path_parser::parse(&path).collect::<Vec<(bool, Vec<(f64, f64)>)>>();
+/// ```
 pub fn parse_with_resolution<'a>(path:&'a str, resolution:u64) -> PathParser<'a> {
     PathParser::new(path, resolution)
 }
 
+/// Iterator over continuous lines.
 pub struct PathParser<'a> {
     data: Peekable<Chars<'a>>,
     current_command: Option<PathElementCommand>,
