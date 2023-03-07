@@ -12,6 +12,13 @@ let paths = svg_path_parser::parse(&path).collect::<Vec<(bool, Vec<(f64, f64)>)>
 
 The `bool` indicates whether the path is closed and the `Vec` is a vector of all the points. Treat it as a continuous connect the dots thing.
 
+By default, curves are rendered as 64 different line segments spaced at equal angles from each other. In order to change this, use:
+
+```rust
+let resolution = 32;
+let paths = svg_path_parser::parse_with_resolution(&path, resolution).collect::<Vec<(bool, Vec<(f64, f64)>)>>();
+```
+
 ### Creating lines from a list of points
 
 I get that a list of points is not very helpful.
