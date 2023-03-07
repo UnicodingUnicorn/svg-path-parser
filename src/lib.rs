@@ -79,6 +79,17 @@ impl<'a> PathParser<'a> {
         })
     }
 
+    fn get_bool(&mut self) -> Option<bool> {
+        let n = self.get_float()?; // I can't use floats in match arms
+        if n == 1.0 {
+            Some(true)
+        } else if n == 0.0 {
+            Some(false)
+        } else {
+            None
+        }
+    }
+
     // Returns: (ended, result)
     fn get_path(&mut self) -> Option<(bool, Vec<(f64, f64)>)> {
         let mut ended = false;
@@ -114,6 +125,7 @@ impl<'a> PathParser<'a> {
             PathElementLabel::SmoothCubicBezier => self.handle_smooth_cubic_bezier(elem.relative()),
             PathElementLabel::QuadraticBezier => self.handle_quadratic_bezier(elem.relative()),
             PathElementLabel::SmoothQuadraticBezier => self.handle_smooth_quadratic_bezier(elem.relative()),
+            PathElementLabel::Arc => self.handle_arc(elem.relative()),
             PathElementLabel::End => self.handle_end(),
         }?;
 
@@ -247,6 +259,19 @@ impl<'a> PathParser<'a> {
         self.insert_points(points);
 
         Some(PreviousElementCommand::QuadraticBezier(p1))
+    }
+
+    fn handle_arc(&mut self, relative:bool) -> Option<PreviousElementCommand> {
+        let r = self.get_point(relative)?;
+        let rotation = self.get_float()?;
+        let large = self.get_bool()?;
+        let sweep = self.get_bool()?;
+        let end = self.get_point(relative)?;
+
+        let points = curves::compute_arc(self.cursor, r, rotation, large, sweep, end, self.resolution);
+        self.insert_points(points);
+
+        Some(PreviousElementCommand::NotCurve)
     }
 }
 

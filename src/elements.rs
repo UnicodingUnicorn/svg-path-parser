@@ -16,6 +16,7 @@ pub enum PathElementLabel {
     SmoothCubicBezier,
     QuadraticBezier,
     SmoothQuadraticBezier,
+    Arc,
     End,
 }
 
@@ -42,6 +43,7 @@ impl PathElementCommand {
             's' | 'S' => Self::new(ch.is_lowercase(), PathElementLabel::SmoothCubicBezier),
             'q' | 'Q' => Self::new(ch.is_lowercase(), PathElementLabel::QuadraticBezier),
             't' | 'T' => Self::new(ch.is_lowercase(), PathElementLabel::SmoothQuadraticBezier),
+            'a' | 'A' => Self::new(ch.is_lowercase(), PathElementLabel::Arc),
             'z' | 'Z' => Self::new(false, PathElementLabel::End),
             _ => return None,
         })

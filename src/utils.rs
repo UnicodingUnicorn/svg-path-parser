@@ -17,3 +17,20 @@ pub fn reflect_point((ax, ay):(f64, f64), (bx, by):(f64, f64)) -> (f64, f64) {
 
     (x, y)
 }
+
+// Some simple matrix operations
+fn magnitude((x, y):(f64, f64)) -> f64 {
+    (x * x + y * y).sqrt()
+}
+
+pub fn find_angle(u:(f64, f64), v:(f64, f64)) -> f64 {
+    let angle = ((u.0 * v.0 + u.1 * v.1) / (magnitude(u) * magnitude(v))).acos();
+    let sign = (u.0 * v.1 - u.1 * v.0).signum();
+
+    sign * angle
+}
+
+// Applies a rotation matrix
+pub fn rotate(theta:f64, (x, y):(f64, f64)) -> (f64, f64) {
+    (theta.cos() * x - theta.sin() * y, theta.sin() * x + theta.cos() * y)
+}
