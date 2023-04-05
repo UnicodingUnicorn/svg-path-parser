@@ -214,7 +214,7 @@ impl<'a> PathParser<'a> {
     }
 
     fn handle_horizontal(&mut self, relative:bool) -> Option<PreviousElementCommand> {
-        let y = self.get_float()?;
+        let y = self.cursor.1;
         let x = match relative {
             true => self.cursor.0 + self.get_float()?,
             false => self.get_float()?,
@@ -224,7 +224,7 @@ impl<'a> PathParser<'a> {
     }
 
     fn handle_vertical(&mut self, relative:bool) -> Option<PreviousElementCommand> {
-        let x = self.get_float()?;
+        let x = self.cursor.0;
         let y = match relative {
             true => self.cursor.1 + self.get_float()?,
             false => self.get_float()?,
