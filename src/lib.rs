@@ -94,7 +94,20 @@ impl<'a> PathParser<'a> {
                 break;
             }
         }
-        
+
+        // Handle scientific notation (1.23e45)
+        if let Some(ch) = self.data.next_if_eq(&'e') {
+            s.push(ch);
+
+            if let Some(ch) = self.data.next_if(|ch| matches!(ch, '-' | '+')) {
+                s.push(ch)
+            }
+
+            while let Some(ch) = self.data.next_if(|ch| ch.is_ascii_digit()) {
+                s.push(ch)
+            }
+        }
+
         s.parse::<f64>().ok()
     }
 
